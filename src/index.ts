@@ -24,13 +24,10 @@ async function main() {
 
     // Prompt user to unmount
     console.log('Press Enter to unmount the virtual drive...');
+    
     process.stdin.once('data', async () => {
 
         await unmountVirtualDrive(DRIVE_LETTER, MOUNT_PATH);
-
-        console.log('Encrypting and saving the virtual drive...');
-
-        await new Promise(resolve => setTimeout(resolve, 2000));
         await compressVirtualDrive(ZIP_FILE, FOLDER_PATH);
         await deleteVirtualDrive(FOLDER_PATH);
         await encryptCompressVirtualDrive(keypair, ZIP_FILE);
