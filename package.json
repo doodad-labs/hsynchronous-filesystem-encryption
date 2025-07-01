@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "archiver": "^7.0.1",
+    "hsynchronous": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.8"
+  }
+}
