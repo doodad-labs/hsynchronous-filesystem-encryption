@@ -1,7 +1,6 @@
 import { importKeys, VERSION } from 'hsynchronous/dist/index';
 import { encryptCompressVirtualDrive } from './cryptography';
-import { cleanup, loadKey } from './utils';
-import { randomBytes } from 'crypto';
+import { cleanup, loadKey, createBackup, secureWipe, deleteBackup } from './utils';
 import {
     createVirtualDrive,
     unmountVirtualDrive,
@@ -20,24 +19,6 @@ const CONFIG = {
 };
 
 /**
- * Securely overwrites sensitive data in memory
- * @param data The data to overwrite
- * @param iterations Number of overwrite iterations (default: 100)
- */
-function secureWipe(data: any, iterations = 100, bytes = 125): void {
-    for (let i = 0; i < iterations; i++) {
-        if (typeof data === 'string') {
-            data = randomBytes(bytes).toString('hex');
-        } else if (data && typeof data === 'object') {
-            data = {
-                kemKeyPair: randomBytes(bytes).toString('hex'),
-                sigKeyPair: randomBytes(bytes).toString('hex')
-            };
-        }
-    }
-}
-
-/**
  * Initializes and manages the virtual drive lifecycle
  */
 async function manageVirtualDrive() {
@@ -54,6 +35,8 @@ async function manageVirtualDrive() {
         CONFIG.ZIP_FILE_NAME
     );
 
+    createBackup(CONFIG.ENCRYPTED_FILE_PATH)
+
     console.log('\x1b[41mDO NOT TERMINATE OR CLOSE THIS PROCESS WITHOUT UNMOUNTING, \x1b[1mYOU WILL LOSE ALL DATA.\x1b[0m');
 
     // Initialize encryption keys
@@ -69,6 +52,7 @@ async function manageVirtualDrive() {
         CONFIG.ZIP_FILE_NAME,
         keyPair
     );
+
     secureWipe(keyPair);
 
     await openVirtualDrive(CONFIG.DRIVE_LETTER);
@@ -90,6 +74,8 @@ async function manageVirtualDrive() {
 
         await encryptCompressVirtualDrive(keyPair, CONFIG.ZIP_FILE_NAME);
         secureWipe(keyPair);
+
+        deleteBackup(CONFIG.ENCRYPTED_FILE_PATH);
 
         process.exit(0);
     });

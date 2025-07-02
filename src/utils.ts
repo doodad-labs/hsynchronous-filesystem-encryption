@@ -1,8 +1,9 @@
-import { rmSync, existsSync, readFileSync, readdirSync } from 'fs';
+import { rmSync, existsSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { exec } from 'child_process';
 import { platform } from 'os';
 import { promisify } from 'util';
+import { randomBytes } from 'crypto';
 
 const execAsync = promisify(exec);
 
@@ -100,5 +101,108 @@ export async function loadKey(KEYFILE) {
         const errorMessage = `Failed to load key from ${KEYFILE}: ${error.message}`;
         console.error(`Key loading error: ${errorMessage}`);
         throw new Error(errorMessage);
+    }
+}
+
+/**
+ * Creates a backup of the specified file with .bak extension
+ * @param {string} filePath - Path to the file to be backed up
+ * @returns {Promise<void>}
+ * @throws {Error} If backup creation fails (except when source file doesn't exist)
+ */
+export async function createBackup(filePath) {
+    try {
+        // Validate input parameter
+        if (!filePath || typeof filePath !== 'string') {
+            throw new Error('Invalid file path provided');
+        }
+
+        // Construct backup file path
+        const backupFileName = `${filePath}.bak`;
+        
+        // Check if source file exists
+        if (!existsSync(filePath)) {
+            console.warn(`Warning: Source file ${filePath} does not exist, skipping backup creation.`);
+            return;
+        }
+
+        // Verify we can read the source file
+        let fileContent;
+        try {
+            fileContent = readFileSync(filePath, 'utf8');
+        } catch (readError) {
+            throw new Error(`Failed to read source file: ${readError.message}`);
+        }
+
+        // Verify content was read
+        if (fileContent === undefined) {
+            throw new Error('File content was not read properly');
+        }
+
+        // Create backup file
+        try {
+            writeFileSync(backupFileName, fileContent, 'utf8');
+            console.log(`Success: Created backup at ${backupFileName}`);
+        } catch (writeError) {
+            throw new Error(`Failed to create backup file: ${writeError.message}`);
+        }
+
+    } catch (error) {
+        console.error(`Backup Error: Failed to create backup for ${filePath}:`, error.message);
+        throw new Error(`Backup operation failed: ${error.message}`);
+    }
+}
+
+/**
+ * Deletes a backup file with .bak extension
+ * @param {string} filePath - Path to the original file whose backup should be deleted
+ * @returns {Promise<void>}
+ * @throws {Error} If backup deletion fails (except when backup doesn't exist)
+ */
+export async function deleteBackup(filePath) {
+    try {
+        // Validate input parameter
+        if (!filePath || typeof filePath !== 'string') {
+            throw new Error('Invalid file path provided');
+        }
+
+        // Construct backup file path
+        const backupFileName = `${filePath}.bak`;
+
+        // Check if backup exists
+        if (!existsSync(backupFileName)) {
+            console.warn(`Warning: Backup file ${backupFileName} does not exist, skipping deletion.`);
+            return;
+        }
+
+        // Attempt to delete backup
+        try {
+            rmSync(backupFileName, { force: true });
+            console.log(`Success: Deleted backup at ${backupFileName}`);
+        } catch (deleteError) {
+            throw new Error(`Failed to delete backup file: ${deleteError.message}`);
+        }
+
+    } catch (error) {
+        console.error(`Backup Error: Failed to delete backup for ${filePath}:`, error.message);
+        throw new Error(`Backup deletion failed: ${error.message}`);
+    }
+}
+
+/**
+ * Securely overwrites sensitive data in memory
+ * @param data The data to overwrite
+ * @param iterations Number of overwrite iterations (default: 100)
+ */
+export function secureWipe(data: any, iterations = 100, bytes = 125): void {
+    for (let i = 0; i < iterations; i++) {
+        if (typeof data === 'string') {
+            data = randomBytes(bytes).toString('hex');
+        } else if (data && typeof data === 'object') {
+            data = {
+                kemKeyPair: randomBytes(bytes).toString('hex'),
+                sigKeyPair: randomBytes(bytes).toString('hex')
+            };
+        }
     }
 }
