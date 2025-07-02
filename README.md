@@ -1,7 +1,7 @@
 
 # Post-quantum filesystem encryption
 
-Post-Quantum filesystem encryption using a hybrid encrpytion protocol "[hsynchronous](https://github.com/doodad-labs/post-quantum-synchronous-encryption)"
+Post-Quantum filesystem encryption using a hybrid encryption protocol "[hsynchronous](https://github.com/doodad-labs/post-quantum-synchronous-encryption)"
 
 ```ts
 
