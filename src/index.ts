@@ -1,63 +1,112 @@
-import { importKeys } from 'hsynchronous/dist/index';
-import { encryptCompressVirtualDrive, } from './cryptography';
+import { importKeys, VERSION } from 'hsynchronous/dist/index';
+import { encryptCompressVirtualDrive } from './cryptography';
 import { cleanup, loadKey } from './utils';
 import { randomBytes } from 'crypto';
+import {
+    createVirtualDrive,
+    unmountVirtualDrive,
+    openVirtualDrive,
+    deleteVirtualDrive,
+    compressVirtualDrive
+} from './filesystem';
 
-import { createVirtualDrive, unmountVirtualDrive, openVirtualDrive, deleteVirtualDrive, compressVirtualDrive } from './filesystem';
+// Configuration Constants
+const CONFIG = {
+    DRIVE_LETTER: 'A',               // Windows drive letter
+    MOUNT_FOLDER_PATH: './tmp',      // Folder to mount as virtual drive
+    ZIP_FILE_NAME: 'tmp.zip',        // Compressed archive filename
+    KEY_FILE_PATH: './key.txt',      // Path to encryption key file
+    ENCRYPTED_FILE_PATH: './encrypted' // Path for encrypted output
+};
 
-// Configuration
-const DRIVE_LETTER = 'A'; // Windows drive letter
-const FOLDER_PATH = './tmp'; // Windows folder to mount
-const ZIP_FILE = 'tmp.zip'
-const KEYFILE = './key.txt'; // Path to the key file
-const ENCRYPTED_FILE = 'encrypted'
+/**
+ * Securely overwrites sensitive data in memory
+ * @param data The data to overwrite
+ * @param iterations Number of overwrite iterations (default: 100)
+ */
+function secureWipe(data: any, iterations = 100): void {
+    for (let i = 0; i < iterations; i++) {
+        if (typeof data === 'string') {
+            data = randomBytes(125).toString('hex');
+        } else if (data && typeof data === 'object') {
+            data = {
+                kemKeyPair: randomBytes(125).toString('hex'),
+                sigKeyPair: randomBytes(125).toString('hex')
+            };
+        }
+    }
+}
 
-async function main() {
+/**
+ * Initializes and manages the virtual drive lifecycle
+ */
+async function manageVirtualDrive() {
+    
+    console.log('');
+    console.log(`  __QQ    \x1b[1mhsynchronous ${VERSION}\x1b[0m`);
+    console.log(` (_)_\x1b[31m"\x1b[0m>   Post-Quantum Filesystem Encryption`);
+    console.log(`_)        \x1b[2mgithub.com/doodad-labs\x1b[0m`);
+    console.log('');
 
-    console.log('Starting virtual drive script...');
+    await cleanup(
+        CONFIG.DRIVE_LETTER,
+        CONFIG.MOUNT_FOLDER_PATH,
+        CONFIG.ZIP_FILE_NAME
+    );
+
+    console.log('\x1b[41mDO NOT TERMINATE OR CLOSE THIS PROCESS WITHOUT UNMOUNTING, \x1b[1mYOU WILL LOSE ALL DATA.\x1b[0m');
+
+    // Initialize encryption keys
+    let encryptionKey = await loadKey(CONFIG.KEY_FILE_PATH);
+    secureWipe(encryptionKey);
+    let keyPair = await importKeys(encryptionKey);
 
     // Create and mount the virtual drive
-    let KEY = await loadKey(KEYFILE);
-    let KEYPAIR = await importKeys(KEY);
+    await createVirtualDrive(
+        CONFIG.MOUNT_FOLDER_PATH,
+        CONFIG.DRIVE_LETTER,
+        CONFIG.ENCRYPTED_FILE_PATH,
+        CONFIG.ZIP_FILE_NAME,
+        keyPair
+    );
+    secureWipe(keyPair);
 
-    await createVirtualDrive(FOLDER_PATH, DRIVE_LETTER, ENCRYPTED_FILE, ZIP_FILE, KEYPAIR);
+    await openVirtualDrive(CONFIG.DRIVE_LETTER);
 
-    // Clear the key and keypair from memory
-    for (let i = 0; i < 100; i++) KEY = randomBytes(125).toString('hex');
-    for (let i = 0; i < 100; i++) KEYPAIR = { kemKeyPair: randomBytes(125).toString('hex'), sigKeyPair: randomBytes(125).toString('hex') };
-
-    await openVirtualDrive(DRIVE_LETTER);
-
-    // Prompt user to unmount
-    console.log('Press Enter to unmount and encrypt the virtual drive...');
+    // Wait for user input to unmount
+    console.log('\x1b[1mPress Enter to unmount and encrypt the virtual drive...\x1b[0m');
     
     process.stdin.once('data', async () => {
-
-        await unmountVirtualDrive(DRIVE_LETTER);
-        await compressVirtualDrive(ZIP_FILE, FOLDER_PATH);
-        await deleteVirtualDrive(FOLDER_PATH);
+        await unmountVirtualDrive(CONFIG.DRIVE_LETTER);
+        await compressVirtualDrive(CONFIG.ZIP_FILE_NAME, CONFIG.MOUNT_FOLDER_PATH);
+        await deleteVirtualDrive(CONFIG.MOUNT_FOLDER_PATH);
 
         console.log('Virtual drive unmounted and compressed. Now encrypting...');
 
-        let KEY = await loadKey(KEYFILE);
-        let KEYPAIR = await importKeys(KEY);
+        // Reload keys for final encryption
+        encryptionKey = await loadKey(CONFIG.KEY_FILE_PATH);
+        secureWipe(encryptionKey);
+        keyPair = await importKeys(encryptionKey);
 
-        await encryptCompressVirtualDrive(KEYPAIR, ZIP_FILE);
-
-        // Clear the key and keypair from memory
-        for (let i = 0; i < 100; i++) KEY = randomBytes(125).toString('hex');
-        for (let i = 0; i < 100; i++) KEYPAIR = { kemKeyPair: randomBytes(125).toString('hex'), sigKeyPair: randomBytes(125).toString('hex') };
+        await encryptCompressVirtualDrive(keyPair, CONFIG.ZIP_FILE_NAME);
+        secureWipe(keyPair);
 
         process.exit(0);
     });
 }
 
+// Process cleanup handler
 process.on('exit', async () => {
     console.log('Cleaning up...');
-    await cleanup(DRIVE_LETTER, FOLDER_PATH, ZIP_FILE);
+    await cleanup(
+        CONFIG.DRIVE_LETTER,
+        CONFIG.MOUNT_FOLDER_PATH,
+        CONFIG.ZIP_FILE_NAME
+    );
 });
 
-main().catch((error) => {
+// Main execution
+manageVirtualDrive().catch((error) => {
     console.error('Script error:', error.message);
     process.exit(1);
 });

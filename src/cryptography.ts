@@ -61,7 +61,7 @@ export async function encryptCompressVirtualDrive(KEYPAIR, ZIP_FILE) {
 export async function decryptVirtualDrive(KEYPAIR, ZIP_FILE, ENCRYPTED_FILE) {
     try {
         // Construct full path to the encrypted file and target zip file
-        const encryptedFilePath = join(__dirname, '../', ENCRYPTED_FILE);
+        const encryptedFilePath = join(process.cwd(), ENCRYPTED_FILE);
         const zipFile = join(__dirname, '../', ZIP_FILE);
 
         // Read the encrypted data

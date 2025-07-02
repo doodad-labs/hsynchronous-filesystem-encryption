@@ -42,7 +42,7 @@ export async function createVirtualDrive(FOLDER_PATH, DRIVE_LETTER, ENCRYPTED_FI
     const os = platform();
 
     const fullPath = join(__dirname, '../', FOLDER_PATH);
-    const encryptedFilePath = join(__dirname, '../', ENCRYPTED_FILE);
+    const encryptedFilePath = join(process.cwd(), ENCRYPTED_FILE);
     const zipFilePath = join(__dirname, '../', ZIP_FILE);
 
     // does the encrypted file exist?

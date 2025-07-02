@@ -1,4 +1,4 @@
-import { rmSync, existsSync, readFileSync } from 'fs';
+import { rmSync, existsSync, readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { exec } from 'child_process';
 import { platform } from 'os';
@@ -54,7 +54,6 @@ export async function cleanup(DRIVE_LETTER, FOLDER_PATH, ZIP_FILE) {
             }
         } catch (unmountError) {
             // Silently ignore unmount errors as the drive might not be mounted
-            console.debug(`Drive ${DRIVE_LETTER}: was not mounted or could not be unmounted`);
         }
 
     } catch (error) {
@@ -63,28 +62,43 @@ export async function cleanup(DRIVE_LETTER, FOLDER_PATH, ZIP_FILE) {
     }
 }
 
+/**
+ * Loads and validates a cryptographic key from a file
+ * @param {string} KEYFILE - The filename/path of the key file to load
+ * @returns {Promise<string>} The key data as a trimmed string
+ * @throws {Error} If the key file doesn't exist, is empty, or contains invalid data
+ */
 export async function loadKey(KEYFILE) {
     try {
-
+        // Construct absolute path to the key file
         const keyPath = join(__dirname, '../', KEYFILE);
 
+        // Verify key file exists before attempting to read
         if (!existsSync(keyPath)) {
-            throw new Error(`Key file does not exist at path: ${keyPath}`);
+            throw new Error(`Key file not found at path: ${keyPath}`);
         }
 
-        // Read the key file synchronously
-        const keyData = readFileSync(keyPath, 'utf8').trim();
-
-        if (!keyData) {
-            throw new Error('Key file is empty');
+        // Read key file contents synchronously
+        let keyData;
+        try {
+            keyData = readFileSync(keyPath, 'utf8');
+        } catch (readError) {
+            throw new Error(`Failed to read key file: ${readError.message}`);
         }
 
-        // Return the key data
-        return keyData;
+        // Trim whitespace and validate content
+        const trimmedKey = keyData.trim();
+        if (!trimmedKey) {
+            throw new Error('Key file is empty (contains only whitespace)');
+        }
+
+        // Return validated key data
+        return trimmedKey;
 
     } catch (error) {
-        console.error('Error loading key:', error.message);
-        throw new Error(`Failed to load key from ${KEYFILE}: ${error.message}`);
+        // Enhance and rethrow the error with additional context
+        const errorMessage = `Failed to load key from ${KEYFILE}: ${error.message}`;
+        console.error(`Key loading error: ${errorMessage}`);
+        throw new Error(errorMessage);
     }
-
 }
