@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, rmSync } from 'fs';
 import { encrypt, decrypt } from 'hsynchronous/dist/index';
 import { join } from 'path';
+import { randomBytes } from 'crypto';
 
 /**
  * Encrypts and compresses virtual drive data
@@ -31,8 +32,8 @@ export async function encryptCompressVirtualDrive(KEYPAIR, ZIP_FILE) {
         // Encrypt the data using the provided keypair
         let encryptedData;
         try {
-            const resolvedKeypair = await KEYPAIR;
-            encryptedData = await encrypt(data, resolvedKeypair);
+            encryptedData = await encrypt(data, KEYPAIR);
+            for (let i = 0; i < 100; i++) KEYPAIR = { kemKeyPair: randomBytes(125).toString('hex'), sigKeyPair: randomBytes(125).toString('hex') };
         } catch (encryptError) {
             throw new Error(`Encryption failed: ${encryptError.message}`);
         }
@@ -74,8 +75,8 @@ export async function decryptVirtualDrive(KEYPAIR, ZIP_FILE, ENCRYPTED_FILE) {
         // Decrypt the data using the provided keypair
         let decryptedData;
         try {
-            const resolvedKeypair = await KEYPAIR;
-            decryptedData = await decrypt(encryptedData, resolvedKeypair);
+            decryptedData = await decrypt(encryptedData, KEYPAIR);
+            for (let i = 0; i < 100; i++) KEYPAIR = { kemKeyPair: randomBytes(125).toString('hex'), sigKeyPair: randomBytes(125).toString('hex') };
         } catch (decryptError) {
             throw new Error(`Decryption failed: ${decryptError.message}`);
         }

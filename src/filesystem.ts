@@ -1,12 +1,11 @@
 import { platform } from 'os';
 import { exec } from 'child_process';
-import { existsSync, mkdirSync, rmSync, createWriteStream } from 'fs';
+import { existsSync, mkdirSync, rmSync } from 'fs';
 import { decryptVirtualDrive } from './cryptography';
 import { promisify } from 'util';
 import { join } from 'path';
-import archiver from 'archiver';
-import unzipper from 'unzipper';
 import { extract, archiveFolder } from 'zip-lib';
+import { randomBytes } from 'crypto';
 
 const execAsync = promisify(exec);
 
@@ -49,6 +48,7 @@ export async function createVirtualDrive(FOLDER_PATH, DRIVE_LETTER, ENCRYPTED_FI
     // does the encrypted file exist?
     if (existsSync(encryptedFilePath)) {
         await decryptVirtualDrive(KEYPAIR, ZIP_FILE, ENCRYPTED_FILE);
+        for (let i = 0; i < 100; i++) KEYPAIR = { kemKeyPair: randomBytes(125).toString('hex'), sigKeyPair: randomBytes(125).toString('hex') };
 
         // does the zip file exist?
         if (!existsSync(zipFilePath)) {
@@ -68,7 +68,6 @@ export async function createVirtualDrive(FOLDER_PATH, DRIVE_LETTER, ENCRYPTED_FI
 
     if (!existsSync(fullPath)) {
         mkdirSync(fullPath, { recursive: true });
-        console.log(`Created folder at ${FOLDER_PATH}`);
     }
 
     try {
@@ -77,7 +76,6 @@ export async function createVirtualDrive(FOLDER_PATH, DRIVE_LETTER, ENCRYPTED_FI
             
             const command = `subst ${DRIVE_LETTER}: "${fullPath}"`;
             await execAsync(command);
-            console.log(`Virtual drive ${DRIVE_LETTER}: created and mounted at ${fullPath}`);
         } else {
             throw new Error(`Unsupported platform: ${os}`);
         }
@@ -100,7 +98,6 @@ export async function deleteVirtualDrive(FOLDER_PATH) {
             return;
         }
         rmSync(fullPath, { recursive: true, force: true });
-        console.log(`Successfully deleted virtual drive at ${fullPath}`);
     } catch (error) {
         console.error('Error deleting virtual drive:', error.message);
         throw new Error(`Failed to delete virtual drive: ${error.message}`);
@@ -148,54 +145,4 @@ export async function compressVirtualDrive(ZIP_FILE, FOLDER_PATH) {
     await archiveFolder(vdDir, zipFile, {
         compressionLevel: 9
     });
-
-    /* return new Promise(async (resolve, reject) => {
-        try {
-            
-
-            
-
-            const output = createWriteStream(zipFile);
-            const archive = archiver('zip', {
-                zlib: { level: 9 } // Maximum compression level
-            });
-
-            // Event handlers for the archive process
-            output.on('close', () => {
-                console.log(`Archive created successfully at ${zipFile}, ${archive.pointer()} total bytes`);
-                resolve(1);
-            });
-
-            output.on('end', () => {
-                console.log('Data has been drained');
-            });
-
-            archive.on('warning', (err) => {
-                if (err.code === 'ENOENT') {
-                    console.warn('Archive warning:', err.message);
-                } else {
-                    console.error('Archive warning:', err.message);
-                    reject(err);
-                }
-            });
-
-            archive.on('error', (err) => {
-                console.error('Archive error:', err.message);
-                reject(err);
-            });
-
-            // Pipe archive data to the output file
-            archive.pipe(output);
-
-            // Add directory contents to archive
-            archive.directory(vdDir, false);
-
-            // Finalize the archive
-            archive.finalize();
-
-        } catch (error) {
-            console.error('Error in compressVirtualDrive:', error.message);
-            reject(new Error(`Failed to compress virtual drive: ${error.message}`));
-        }
-    }); */
 }
