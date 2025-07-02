@@ -3,6 +3,10 @@
 
 Post-Quantum filesystem encryption using a hybrid encryption protocol "[hsynchronous](https://github.com/doodad-labs/post-quantum-synchronous-encryption)"
 
+```
+npm i -g hsynchronous-fs
+```
+
 ```ts
 
 ❯ hsynchronous-fs --help
