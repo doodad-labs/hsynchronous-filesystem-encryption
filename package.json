@@ -9,6 +9,8 @@
     "synchronous-encryption",
     "post-quantum-synchronous-encryption"
   ],
+  "bin": "dist/index.js",
+  "main": "dist/index.js",
   "scripts": {
     "build": "tsup src --minify --dts --platform=node --legacy-output --treeshake"
   },
