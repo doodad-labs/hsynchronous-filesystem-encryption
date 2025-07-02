@@ -1,4 +1,4 @@
-import { importKeys, VERSION } from 'hsynchronous/dist/index';
+import { importKeys, VERSION } from 'hsynchronous';
 import { encryptCompressVirtualDrive } from './cryptography';
 import { cleanup, loadKey, createBackup, secureWipe, deleteBackup } from './utils';
 import {

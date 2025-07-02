@@ -1,6 +1,6 @@
 {
   "name": "hsynchronous-fs",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Post-Quantum filesystem encryption using a hybrid encryption protocol \"hsynchronous\"",
   "keywords": [
     "aes-encryption",
@@ -11,12 +11,13 @@
   ],
   "bin": "dist/index.js",
   "main": "dist/index.js",
+  "license": "GPL-3.0",
   "scripts": {
     "build": "tsup src --minify --dts --platform=node --legacy-output --treeshake"
   },
   "dependencies": {
     "args": "^5.0.3",
-    "hsynchronous": "^1.0.0",
+    "hsynchronous": "1.0.1",
     "zip-lib": "^1.1.2"
   },
   "devDependencies": {

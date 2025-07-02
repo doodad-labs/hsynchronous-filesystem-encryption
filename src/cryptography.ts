@@ -1,7 +1,6 @@
 import { readFileSync, writeFileSync, rmSync } from 'fs';
-import { encrypt, decrypt } from 'hsynchronous/dist/index';
+import { encrypt, decrypt } from 'hsynchronous';
 import { join } from 'path';
-import { randomBytes } from 'crypto';
 import type { KeyPair } from './types';
 import { secureWipe } from './utils';
 
