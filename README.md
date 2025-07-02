@@ -69,6 +69,3 @@ Decrypt                      622.42 µs/iter 878.20 µs
                       (259.30 µs … 2.62 ms)   1.87 ms
                     (472.00  b … 493.76 kb)  16.20 kb
 ```
-  - Protocol/version mismatch
-  - Unsupported algorithms detected
-  - Malformed key data
