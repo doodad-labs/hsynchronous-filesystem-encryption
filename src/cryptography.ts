@@ -2,6 +2,8 @@ import { readFileSync, writeFileSync, rmSync } from 'fs';
 import { encrypt, decrypt } from 'hsynchronous/dist/index';
 import { join } from 'path';
 import { randomBytes } from 'crypto';
+import type { KeyPair } from './types';
+import { secureWipe } from './utils';
 
 /**
  * Encrypts and compresses virtual drive data
@@ -9,7 +11,7 @@ import { randomBytes } from 'crypto';
  * @param {string} ZIP_FILE - The name/path of the zip file to process
  * @throws Will throw an error if any step in the process fails
  */
-export async function encryptCompressVirtualDrive(KEYPAIR, ZIP_FILE) {
+export async function encryptCompressVirtualDrive(KEYPAIR: KeyPair, ZIP_FILE: string) {
     try {
         // Construct full path to the zip file
         const zipFile = join(__dirname, '../', ZIP_FILE);
@@ -18,14 +20,14 @@ export async function encryptCompressVirtualDrive(KEYPAIR, ZIP_FILE) {
         let data;
         try {
             data = readFileSync(zipFile, 'hex');
-        } catch (readError) {
+        } catch (readError: any) {
             throw new Error(`Failed to read zip file: ${readError.message}`);
         }
 
         // Remove the original zip file (forcefully if needed)
         try {
             rmSync(zipFile, { force: true });
-        } catch (removeError) {
+        } catch (removeError: any) {
             throw new Error(`Failed to remove original zip file: ${removeError.message}`);
         }
 
@@ -33,8 +35,8 @@ export async function encryptCompressVirtualDrive(KEYPAIR, ZIP_FILE) {
         let encryptedData;
         try {
             encryptedData = await encrypt(data, KEYPAIR);
-            for (let i = 0; i < 100; i++) KEYPAIR = { kemKeyPair: randomBytes(125).toString('hex'), sigKeyPair: randomBytes(125).toString('hex') };
-        } catch (encryptError) {
+            secureWipe(KEYPAIR);
+        } catch (encryptError: any) {
             throw new Error(`Encryption failed: ${encryptError.message}`);
         }
 
@@ -42,11 +44,11 @@ export async function encryptCompressVirtualDrive(KEYPAIR, ZIP_FILE) {
         const encryptedFilePath = join(__dirname, '../', 'encrypted');
         try {
             writeFileSync(encryptedFilePath, encryptedData);
-        } catch (writeError) {
+        } catch (writeError: any) {
             throw new Error(`Failed to write encrypted file: ${writeError.message}`);
         }
 
-    } catch (error) {
+    } catch (error: any) {
         // Rethrow any errors with context
         throw new Error(`encryptCompressVirtualDrive failed: ${error.message}`);
     }
@@ -58,7 +60,7 @@ export async function encryptCompressVirtualDrive(KEYPAIR, ZIP_FILE) {
  * @param {string} ZIP_FILE - The name/path for the output zip file
  * @throws Will throw an error if any step in the process fails
  */
-export async function decryptVirtualDrive(KEYPAIR, ZIP_FILE, ENCRYPTED_FILE) {
+export async function decryptVirtualDrive(KEYPAIR: KeyPair, ZIP_FILE: string, ENCRYPTED_FILE: string) {
     try {
         // Construct full path to the encrypted file and target zip file
         const encryptedFilePath = join(process.cwd(), ENCRYPTED_FILE);
@@ -68,7 +70,7 @@ export async function decryptVirtualDrive(KEYPAIR, ZIP_FILE, ENCRYPTED_FILE) {
         let encryptedData;
         try {
             encryptedData = readFileSync(encryptedFilePath, 'utf8');
-        } catch (readError) {
+        } catch (readError: any) {
             throw new Error(`Failed to read encrypted file: ${readError.message}`);
         }
 
@@ -76,8 +78,8 @@ export async function decryptVirtualDrive(KEYPAIR, ZIP_FILE, ENCRYPTED_FILE) {
         let decryptedData;
         try {
             decryptedData = await decrypt(encryptedData, KEYPAIR);
-            for (let i = 0; i < 100; i++) KEYPAIR = { kemKeyPair: randomBytes(125).toString('hex'), sigKeyPair: randomBytes(125).toString('hex') };
-        } catch (decryptError) {
+            secureWipe(KEYPAIR);
+        } catch (decryptError: any) {
             throw new Error(`Decryption failed: ${decryptError.message}`);
         }
 
@@ -91,11 +93,11 @@ export async function decryptVirtualDrive(KEYPAIR, ZIP_FILE, ENCRYPTED_FILE) {
             writeFileSync(zipFile, decryptedData.message, {
                 encoding: 'hex'
             });
-        } catch (writeError) {
+        } catch (writeError: any) {
             throw new Error(`Failed to write decrypted file: ${writeError.message}`);
         }
 
-    } catch (error) {
+    } catch (error: any) {
         // Rethrow any errors with context
         throw new Error(`decryptVirtualDrive failed: ${error.message}`);
     }

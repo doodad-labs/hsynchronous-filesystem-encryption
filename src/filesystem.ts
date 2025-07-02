@@ -6,6 +6,8 @@ import { promisify } from 'util';
 import { join } from 'path';
 import { extract, archiveFolder } from 'zip-lib';
 import { randomBytes } from 'crypto';
+import type { KeyPair } from './types';
+import { secureWipe } from './utils';
 
 const execAsync = promisify(exec);
 
@@ -14,7 +16,7 @@ const execAsync = promisify(exec);
  * @param {string} DRIVE_LETTER - The drive letter to unmount (Windows)
  * @throws Will throw an error if unmounting fails or platform is unsupported
  */
-export async function unmountVirtualDrive(DRIVE_LETTER) {
+export async function unmountVirtualDrive(DRIVE_LETTER: string) {
     const os = platform();
 
     try {
@@ -26,7 +28,7 @@ export async function unmountVirtualDrive(DRIVE_LETTER) {
         } else {
             throw new Error(`Unsupported platform: ${os}`);
         }
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error unmounting virtual drive:', error.message);
         throw new Error(`Failed to unmount virtual drive: ${error.message}`);
     }
@@ -38,7 +40,7 @@ export async function unmountVirtualDrive(DRIVE_LETTER) {
  * @param {string} DRIVE_LETTER - Drive letter to assign (Windows)
  * @throws Will throw an error if creation fails or platform is unsupported
  */
-export async function createVirtualDrive(FOLDER_PATH, DRIVE_LETTER, ENCRYPTED_FILE, ZIP_FILE, KEYPAIR) {
+export async function createVirtualDrive(FOLDER_PATH: string, DRIVE_LETTER: string, ENCRYPTED_FILE: string, ZIP_FILE: string, KEYPAIR: KeyPair) {
     const os = platform();
 
     const fullPath = join(__dirname, '../', FOLDER_PATH);
@@ -48,7 +50,7 @@ export async function createVirtualDrive(FOLDER_PATH, DRIVE_LETTER, ENCRYPTED_FI
     // does the encrypted file exist?
     if (existsSync(encryptedFilePath)) {
         await decryptVirtualDrive(KEYPAIR, ZIP_FILE, ENCRYPTED_FILE);
-        for (let i = 0; i < 100; i++) KEYPAIR = { kemKeyPair: randomBytes(125).toString('hex'), sigKeyPair: randomBytes(125).toString('hex') };
+        secureWipe(KEYPAIR);
 
         // does the zip file exist?
         if (!existsSync(zipFilePath)) {
@@ -79,7 +81,7 @@ export async function createVirtualDrive(FOLDER_PATH, DRIVE_LETTER, ENCRYPTED_FI
         } else {
             throw new Error(`Unsupported platform: ${os}`);
         }
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error creating virtual drive:', error.message);
         throw new Error(`Failed to create virtual drive: ${error.message}`);
     }
@@ -90,7 +92,7 @@ export async function createVirtualDrive(FOLDER_PATH, DRIVE_LETTER, ENCRYPTED_FI
  * @param {string} FOLDER_PATH - Path to the folder to delete
  * @throws Will throw an error if deletion fails
  */
-export async function deleteVirtualDrive(FOLDER_PATH) {
+export async function deleteVirtualDrive(FOLDER_PATH: string) {
     try {
         const fullPath = join(__dirname, '../', FOLDER_PATH);
         if (!existsSync(fullPath)) {
@@ -98,7 +100,7 @@ export async function deleteVirtualDrive(FOLDER_PATH) {
             return;
         }
         rmSync(fullPath, { recursive: true, force: true });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error deleting virtual drive:', error.message);
         throw new Error(`Failed to delete virtual drive: ${error.message}`);
     }
@@ -109,7 +111,7 @@ export async function deleteVirtualDrive(FOLDER_PATH) {
  * @param {string} DRIVE_LETTER - Drive letter to open (Windows)
  * @throws Will throw an error if opening fails or platform is unsupported
  */
-export async function openVirtualDrive(DRIVE_LETTER) {
+export async function openVirtualDrive(DRIVE_LETTER: string) {
     const os = platform();
     
     try {
@@ -120,7 +122,7 @@ export async function openVirtualDrive(DRIVE_LETTER) {
         } else {
             throw new Error(`Unsupported platform: ${os}`);
         }
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error opening virtual drive:', error.message);
         throw new Error(`Failed to open virtual drive: ${error.message}`);
     }
@@ -133,7 +135,7 @@ export async function openVirtualDrive(DRIVE_LETTER) {
  * @returns {Promise<number>} Resolves with 1 on success
  * @throws Will throw an error if compression fails
  */
-export async function compressVirtualDrive(ZIP_FILE, FOLDER_PATH) {
+export async function compressVirtualDrive(ZIP_FILE: string, FOLDER_PATH: string) {
 
     const zipFile = join(__dirname, '../', ZIP_FILE);
     const vdDir = join(__dirname, '../', FOLDER_PATH);

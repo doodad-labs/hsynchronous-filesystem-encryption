@@ -8,14 +8,23 @@ import {
     deleteVirtualDrive,
     compressVirtualDrive
 } from './filesystem';
+import args from 'args';
+
+
+args
+    .option('drive', 'The Drive letter to mount to', 'A')
+    .option('key', 'The key file path')
+    .option('file', 'The input and output file that holds your encrypted data', './encrypted')
+
+const flags = args.parse(process.argv)
 
 // Configuration Constants
 const CONFIG = {
-    DRIVE_LETTER: 'A',               // Windows drive letter
+    DRIVE_LETTER: flags.drive.toUpperCase().replace(':', '') || 'A',               // Windows drive letter
     MOUNT_FOLDER_PATH: './tmp',      // Folder to mount as virtual drive
     ZIP_FILE_NAME: 'tmp.zip',        // Compressed archive filename
-    KEY_FILE_PATH: './key.txt',      // Path to encryption key file
-    ENCRYPTED_FILE_PATH: './encrypted' // Path for encrypted output
+    KEY_FILE_PATH: flags.key || './key.txt',      // Path to encryption key file
+    ENCRYPTED_FILE_PATH: flags.file || './encrypted' // Path for encrypted output
 };
 
 /**
@@ -24,10 +33,22 @@ const CONFIG = {
 async function manageVirtualDrive() {
     
     console.log('');
-    console.log(`  __QQ    \x1b[1mhsynchronous ${VERSION}\x1b[0m`);
+    console.log(`  __QQ   \x1b[1m hsynchronous ${VERSION}\x1b[0m`);
     console.log(` (_)_\x1b[31m"\x1b[0m>   Post-Quantum Filesystem Encryption`);
-    console.log(`_)        \x1b[2mgithub.com/doodad-labs\x1b[0m`);
+    console.log(`_)       \x1b[2m github.com/doodad-labs\x1b[0m`);
     console.log('');
+
+    // Validate configuration
+    if (!CONFIG.DRIVE_LETTER || !CONFIG.MOUNT_FOLDER_PATH || !CONFIG.ZIP_FILE_NAME || !CONFIG.KEY_FILE_PATH || !CONFIG.ENCRYPTED_FILE_PATH) {
+        console.error('Error: Missing required configuration parameters.');
+        process.exit(1);
+    }
+
+    // Ensure Drive Letter is valid
+    if (!/^[A-Z]$/.test(CONFIG.DRIVE_LETTER)) {
+        console.error(`Error: Invalid drive letter (${CONFIG.DRIVE_LETTER}). Use format like "C:", "D:", etc.`);
+        process.exit(1);
+    }
 
     await cleanup(
         CONFIG.DRIVE_LETTER,
@@ -35,14 +56,13 @@ async function manageVirtualDrive() {
         CONFIG.ZIP_FILE_NAME
     );
 
-    createBackup(CONFIG.ENCRYPTED_FILE_PATH)
-
-    console.log('\x1b[41mDO NOT TERMINATE OR CLOSE THIS PROCESS WITHOUT UNMOUNTING, \x1b[1mYOU WILL LOSE ALL DATA.\x1b[0m');
-
     // Initialize encryption keys
     let encryptionKey = await loadKey(CONFIG.KEY_FILE_PATH);
     secureWipe(encryptionKey);
     let keyPair = await importKeys(encryptionKey);
+
+    createBackup(CONFIG.ENCRYPTED_FILE_PATH)
+    console.log('\x1b[41mDO NOT TERMINATE OR CLOSE THIS PROCESS WITHOUT UNMOUNTING, \x1b[1mYOU WILL LOSE ALL DATA.\x1b[0m');
 
     // Create and mount the virtual drive
     await createVirtualDrive(

@@ -14,7 +14,7 @@ const execAsync = promisify(exec);
  * @param {string} ZIP_FILE - The zip file path to delete
  * @throws Will throw an error if cleanup operations fail (except for unmount which is best-effort)
  */
-export async function cleanup(DRIVE_LETTER, FOLDER_PATH, ZIP_FILE) {
+export async function cleanup(DRIVE_LETTER: string, FOLDER_PATH: string, ZIP_FILE: any) {
     try {
         // Construct full paths to ensure correct file system operations
         const fullPath = join(__dirname, '../', FOLDER_PATH);
@@ -26,7 +26,7 @@ export async function cleanup(DRIVE_LETTER, FOLDER_PATH, ZIP_FILE) {
                 rmSync(fullPath, { recursive: true, force: true });
                 console.log(`Successfully removed folder: ${fullPath}`);
             }
-        } catch (folderError) {
+        } catch (folderError: any) {
             console.warn(`Warning: Could not remove folder ${fullPath}: ${folderError.message}`);
         }
 
@@ -36,7 +36,7 @@ export async function cleanup(DRIVE_LETTER, FOLDER_PATH, ZIP_FILE) {
                 rmSync(zipFilePath, { force: true });
                 console.log(`Successfully removed zip file: ${zipFilePath}`);
             }
-        } catch (zipError) {
+        } catch (zipError: any) {
             console.warn(`Warning: Could not remove zip file ${zipFilePath}: ${zipError.message}`);
         }
 
@@ -57,7 +57,7 @@ export async function cleanup(DRIVE_LETTER, FOLDER_PATH, ZIP_FILE) {
             // Silently ignore unmount errors as the drive might not be mounted
         }
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error during cleanup:', error.message);
         throw new Error(`Cleanup failed: ${error.message}`);
     }
@@ -69,7 +69,7 @@ export async function cleanup(DRIVE_LETTER, FOLDER_PATH, ZIP_FILE) {
  * @returns {Promise<string>} The key data as a trimmed string
  * @throws {Error} If the key file doesn't exist, is empty, or contains invalid data
  */
-export async function loadKey(KEYFILE) {
+export async function loadKey(KEYFILE: string) {
     try {
         // Construct absolute path to the key file
         const keyPath = join(__dirname, '../', KEYFILE);
@@ -83,7 +83,7 @@ export async function loadKey(KEYFILE) {
         let keyData;
         try {
             keyData = readFileSync(keyPath, 'utf8');
-        } catch (readError) {
+        } catch (readError: any) {
             throw new Error(`Failed to read key file: ${readError.message}`);
         }
 
@@ -96,7 +96,7 @@ export async function loadKey(KEYFILE) {
         // Return validated key data
         return trimmedKey;
 
-    } catch (error) {
+    } catch (error: any) {
         // Enhance and rethrow the error with additional context
         const errorMessage = `Failed to load key from ${KEYFILE}: ${error.message}`;
         console.error(`Key loading error: ${errorMessage}`);
@@ -110,7 +110,7 @@ export async function loadKey(KEYFILE) {
  * @returns {Promise<void>}
  * @throws {Error} If backup creation fails (except when source file doesn't exist)
  */
-export async function createBackup(filePath) {
+export async function createBackup(filePath: string) {
     try {
         // Validate input parameter
         if (!filePath || typeof filePath !== 'string') {
@@ -130,7 +130,7 @@ export async function createBackup(filePath) {
         let fileContent;
         try {
             fileContent = readFileSync(filePath, 'utf8');
-        } catch (readError) {
+        } catch (readError: any) {
             throw new Error(`Failed to read source file: ${readError.message}`);
         }
 
@@ -143,11 +143,11 @@ export async function createBackup(filePath) {
         try {
             writeFileSync(backupFileName, fileContent, 'utf8');
             console.log(`Success: Created backup at ${backupFileName}`);
-        } catch (writeError) {
+        } catch (writeError: any) {
             throw new Error(`Failed to create backup file: ${writeError.message}`);
         }
 
-    } catch (error) {
+    } catch (error: any) {
         console.error(`Backup Error: Failed to create backup for ${filePath}:`, error.message);
         throw new Error(`Backup operation failed: ${error.message}`);
     }
@@ -159,7 +159,7 @@ export async function createBackup(filePath) {
  * @returns {Promise<void>}
  * @throws {Error} If backup deletion fails (except when backup doesn't exist)
  */
-export async function deleteBackup(filePath) {
+export async function deleteBackup(filePath: string) {
     try {
         // Validate input parameter
         if (!filePath || typeof filePath !== 'string') {
@@ -179,11 +179,11 @@ export async function deleteBackup(filePath) {
         try {
             rmSync(backupFileName, { force: true });
             console.log(`Success: Deleted backup at ${backupFileName}`);
-        } catch (deleteError) {
+        } catch (deleteError: any) {
             throw new Error(`Failed to delete backup file: ${deleteError.message}`);
         }
 
-    } catch (error) {
+    } catch (error: any) {
         console.error(`Backup Error: Failed to delete backup for ${filePath}:`, error.message);
         throw new Error(`Backup deletion failed: ${error.message}`);
     }
