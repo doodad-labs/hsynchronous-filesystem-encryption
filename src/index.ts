@@ -24,14 +24,14 @@ const CONFIG = {
  * @param data The data to overwrite
  * @param iterations Number of overwrite iterations (default: 100)
  */
-function secureWipe(data: any, iterations = 100): void {
+function secureWipe(data: any, iterations = 100, bytes = 125): void {
     for (let i = 0; i < iterations; i++) {
         if (typeof data === 'string') {
-            data = randomBytes(125).toString('hex');
+            data = randomBytes(bytes).toString('hex');
         } else if (data && typeof data === 'object') {
             data = {
-                kemKeyPair: randomBytes(125).toString('hex'),
-                sigKeyPair: randomBytes(125).toString('hex')
+                kemKeyPair: randomBytes(bytes).toString('hex'),
+                sigKeyPair: randomBytes(bytes).toString('hex')
             };
         }
     }
