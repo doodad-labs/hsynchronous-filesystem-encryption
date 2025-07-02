@@ -8,7 +8,7 @@ import { join } from 'path';
  * @param {string} ZIP_FILE - The name/path of the zip file to process
  * @throws Will throw an error if any step in the process fails
  */
-export async function encryptCompressVirtualDrive(keypair, ZIP_FILE) {
+export async function encryptCompressVirtualDrive(KEYPAIR, ZIP_FILE) {
     try {
         // Construct full path to the zip file
         const zipFile = join(__dirname, '../', ZIP_FILE);
@@ -16,7 +16,7 @@ export async function encryptCompressVirtualDrive(keypair, ZIP_FILE) {
         // Read the zip file contents
         let data;
         try {
-            data = readFileSync(zipFile, 'utf8');
+            data = readFileSync(zipFile, 'hex');
         } catch (readError) {
             throw new Error(`Failed to read zip file: ${readError.message}`);
         }
@@ -31,7 +31,7 @@ export async function encryptCompressVirtualDrive(keypair, ZIP_FILE) {
         // Encrypt the data using the provided keypair
         let encryptedData;
         try {
-            const resolvedKeypair = await keypair;
+            const resolvedKeypair = await KEYPAIR;
             encryptedData = await encrypt(data, resolvedKeypair);
         } catch (encryptError) {
             throw new Error(`Encryption failed: ${encryptError.message}`);
@@ -57,10 +57,10 @@ export async function encryptCompressVirtualDrive(keypair, ZIP_FILE) {
  * @param {string} ZIP_FILE - The name/path for the output zip file
  * @throws Will throw an error if any step in the process fails
  */
-export async function decryptVirtualDrive(keypair, ZIP_FILE) {
+export async function decryptVirtualDrive(KEYPAIR, ZIP_FILE, ENCRYPTED_FILE) {
     try {
         // Construct full path to the encrypted file and target zip file
-        const encryptedFilePath = join(__dirname, '../', 'encrypted');
+        const encryptedFilePath = join(__dirname, '../', ENCRYPTED_FILE);
         const zipFile = join(__dirname, '../', ZIP_FILE);
 
         // Read the encrypted data
@@ -74,7 +74,7 @@ export async function decryptVirtualDrive(keypair, ZIP_FILE) {
         // Decrypt the data using the provided keypair
         let decryptedData;
         try {
-            const resolvedKeypair = await keypair;
+            const resolvedKeypair = await KEYPAIR;
             decryptedData = await decrypt(encryptedData, resolvedKeypair);
         } catch (decryptError) {
             throw new Error(`Decryption failed: ${decryptError.message}`);
@@ -87,7 +87,9 @@ export async function decryptVirtualDrive(keypair, ZIP_FILE) {
 
         // Write the decrypted data to the zip file
         try {
-            writeFileSync(zipFile, decryptedData.message);
+            writeFileSync(zipFile, decryptedData.message, {
+                encoding: 'hex'
+            });
         } catch (writeError) {
             throw new Error(`Failed to write decrypted file: ${writeError.message}`);
         }

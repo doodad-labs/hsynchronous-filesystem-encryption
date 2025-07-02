@@ -1,19 +1,21 @@
 import { platform } from 'os';
 import { exec } from 'child_process';
 import { existsSync, mkdirSync, rmSync, createWriteStream } from 'fs';
+import { decryptVirtualDrive } from './cryptography';
 import { promisify } from 'util';
 import { join } from 'path';
 import archiver from 'archiver';
+import unzipper from 'unzipper';
+import { extract, archiveFolder } from 'zip-lib';
 
 const execAsync = promisify(exec);
 
 /**
  * Unmounts a virtual drive based on the operating system
  * @param {string} DRIVE_LETTER - The drive letter to unmount (Windows)
- * @param {string} MOUNT_PATH - The mount path to unmount (Linux)
  * @throws Will throw an error if unmounting fails or platform is unsupported
  */
-export async function unmountVirtualDrive(DRIVE_LETTER, MOUNT_PATH) {
+export async function unmountVirtualDrive(DRIVE_LETTER) {
     const os = platform();
 
     try {
@@ -22,13 +24,6 @@ export async function unmountVirtualDrive(DRIVE_LETTER, MOUNT_PATH) {
             const command = `subst ${DRIVE_LETTER}: /D`;
             await execAsync(command);
             console.log(`Virtual drive ${DRIVE_LETTER}: unmounted successfully`);
-        } else if (os === 'linux') {
-            // Linux: Unmount the disk image with sudo privileges
-            if (!existsSync(MOUNT_PATH)) {
-                throw new Error(`Mount path ${MOUNT_PATH} does not exist`);
-            }
-            await execAsync(`sudo umount ${MOUNT_PATH}`);
-            console.log(`Virtual drive unmounted successfully from ${MOUNT_PATH}`);
         } else {
             throw new Error(`Unsupported platform: ${os}`);
         }
@@ -42,42 +37,47 @@ export async function unmountVirtualDrive(DRIVE_LETTER, MOUNT_PATH) {
  * Creates a virtual drive based on the operating system
  * @param {string} FOLDER_PATH - Path to the folder to mount (Windows)
  * @param {string} DRIVE_LETTER - Drive letter to assign (Windows)
- * @param {string} MOUNT_PATH - Path to mount the drive (Linux)
- * @param {string} IMAGE_PATH - Path to the disk image (Linux)
- * @param {number} IMAGE_SIZE_MB - Size of the disk image in MB (Linux)
  * @throws Will throw an error if creation fails or platform is unsupported
  */
-export async function createVirtualDrive(FOLDER_PATH, DRIVE_LETTER, MOUNT_PATH, IMAGE_PATH, IMAGE_SIZE_MB) {
+export async function createVirtualDrive(FOLDER_PATH, DRIVE_LETTER, ENCRYPTED_FILE, ZIP_FILE, KEYPAIR) {
     const os = platform();
+
+    const fullPath = join(__dirname, '../', FOLDER_PATH);
+    const encryptedFilePath = join(__dirname, '../', ENCRYPTED_FILE);
+    const zipFilePath = join(__dirname, '../', ZIP_FILE);
+
+    // does the encrypted file exist?
+    if (existsSync(encryptedFilePath)) {
+        await decryptVirtualDrive(KEYPAIR, ZIP_FILE, ENCRYPTED_FILE);
+
+        // does the zip file exist?
+        if (!existsSync(zipFilePath)) {
+            throw new Error(`Zip file ${ZIP_FILE} does not exist after decryption`);
+        }
+
+        // remove the encrypted file
+        rmSync(encryptedFilePath, { force: true });
+
+        // unzip the file
+        await extract(zipFilePath, fullPath)
+        
+
+        // remove the zip file
+        rmSync(zipFilePath, { force: true });
+    }
+
+    if (!existsSync(fullPath)) {
+        mkdirSync(fullPath, { recursive: true });
+        console.log(`Created folder at ${FOLDER_PATH}`);
+    }
 
     try {
         if (os === 'win32') {
             // Windows: Use subst to map a folder as a virtual drive
-            if (!existsSync(FOLDER_PATH)) {
-                mkdirSync(FOLDER_PATH, { recursive: true });
-                console.log(`Created folder at ${FOLDER_PATH}`);
-            }
-            const command = `subst ${DRIVE_LETTER}: "${FOLDER_PATH}"`;
+            
+            const command = `subst ${DRIVE_LETTER}: "${fullPath}"`;
             await execAsync(command);
-            console.log(`Virtual drive ${DRIVE_LETTER}: created and mounted at ${FOLDER_PATH}`);
-        } else if (os === 'linux') {
-            // Linux: Create a disk image and mount it
-            if (!existsSync(MOUNT_PATH)) {
-                mkdirSync(MOUNT_PATH, { recursive: true });
-                console.log(`Created mount point at ${MOUNT_PATH}`);
-            }
-
-            if (!existsSync(IMAGE_PATH)) {
-                // Create disk image with specified size
-                await execAsync(`dd if=/dev/zero of=${IMAGE_PATH} bs=1M count=${IMAGE_SIZE_MB} status=progress`);
-                // Format as ext4 filesystem
-                await execAsync(`mkfs.ext4 -F ${IMAGE_PATH}`);
-                console.log(`Created and formatted disk image at ${IMAGE_PATH}`);
-            }
-
-            // Mount the image with loop device
-            await execAsync(`sudo mount -o loop ${IMAGE_PATH} ${MOUNT_PATH}`);
-            console.log(`Virtual drive mounted successfully at ${MOUNT_PATH}`);
+            console.log(`Virtual drive ${DRIVE_LETTER}: created and mounted at ${fullPath}`);
         } else {
             throw new Error(`Unsupported platform: ${os}`);
         }
@@ -110,10 +110,9 @@ export async function deleteVirtualDrive(FOLDER_PATH) {
 /**
  * Opens the virtual drive in the system's file explorer
  * @param {string} DRIVE_LETTER - Drive letter to open (Windows)
- * @param {string} MOUNT_PATH - Path to open (Linux)
  * @throws Will throw an error if opening fails or platform is unsupported
  */
-export async function openVirtualDrive(DRIVE_LETTER, MOUNT_PATH) {
+export async function openVirtualDrive(DRIVE_LETTER) {
     const os = platform();
     
     try {
@@ -121,13 +120,6 @@ export async function openVirtualDrive(DRIVE_LETTER, MOUNT_PATH) {
             // Windows: Open the virtual drive in File Explorer
             await execAsync(`start ${DRIVE_LETTER}:`);
             console.log(`Opened virtual drive ${DRIVE_LETTER}: in File Explorer`);
-        } else if (os === 'linux') {
-            // Linux: Open the mount point in the default file manager
-            if (!existsSync(MOUNT_PATH)) {
-                throw new Error(`Mount path ${MOUNT_PATH} does not exist`);
-            }
-            await execAsync(`xdg-open "${MOUNT_PATH}"`);
-            console.log(`Opened virtual drive at ${MOUNT_PATH} in file manager`);
         } else {
             throw new Error(`Unsupported platform: ${os}`);
         }
@@ -145,14 +137,23 @@ export async function openVirtualDrive(DRIVE_LETTER, MOUNT_PATH) {
  * @throws Will throw an error if compression fails
  */
 export async function compressVirtualDrive(ZIP_FILE, FOLDER_PATH) {
-    return new Promise((resolve, reject) => {
-        try {
-            const zipFile = join(__dirname, '../', ZIP_FILE);
-            const vdDir = join(__dirname, '../', FOLDER_PATH);
 
-            if (!existsSync(vdDir)) {
-                throw new Error(`Source folder ${vdDir} does not exist`);
-            }
+    const zipFile = join(__dirname, '../', ZIP_FILE);
+    const vdDir = join(__dirname, '../', FOLDER_PATH);
+
+    if (!existsSync(vdDir)) {
+        throw new Error(`Source folder ${vdDir} does not exist`);
+    }
+
+    await archiveFolder(vdDir, zipFile, {
+        compressionLevel: 9
+    });
+
+    /* return new Promise(async (resolve, reject) => {
+        try {
+            
+
+            
 
             const output = createWriteStream(zipFile);
             const archive = archiver('zip', {
@@ -196,5 +197,5 @@ export async function compressVirtualDrive(ZIP_FILE, FOLDER_PATH) {
             console.error('Error in compressVirtualDrive:', error.message);
             reject(new Error(`Failed to compress virtual drive: ${error.message}`));
         }
-    });
+    }); */
 }
